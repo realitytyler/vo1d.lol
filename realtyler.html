@@ -1,0 +1,1288 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealTyler</title>
+    <link rel="icon" href="https://cdn.discordapp.com/avatars/1175835979890819123/45e7da7f28b7cf5e888be20887366f84.webp?size=1024" type="image/png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @keyframes blinkCursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .custom-cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            background: url('assets/mouse.png') no-repeat center center;
+            background-size: contain;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+
+        .custom-cursor.clicking { 
+            transform: translate(-50%, -50%) scale(0.8); 
+        }
+        
+        body:not(.touch-device) {
+            cursor: none;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.5s;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .volume-icon {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            display: flex;
+            color: white;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 80px;
+            height: 5px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .transparency-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transparency-icon {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .slider-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            min-width: 42px;
+            text-align: right;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        
+        .top-controls {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        #profile-block {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 820px;
+            min-height: 332px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform-style: preserve-3d;
+            transition: opacity 0.5s ease, transform 0.5s ease-out;
+            pointer-events: auto;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .profile-container {
+            position: relative;
+            display: inline-block;
+            width: 150px;
+            height: 150px;
+            overflow: visible;
+            flex-shrink: 0;
+        }
+
+        .profile-container::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid rgba(128, 128, 128, 0.3);
+            z-index: -1;
+            animation: orbit 6s linear infinite;
+        }
+
+        .profile-container.fast-orbit::after {
+            animation: fast-orbit 0.5s linear forwards;
+        }
+
+        .profile-picture {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        .profile-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .name-and-badges {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        #profile-name {
+            font-family: 'Courier New', monospace;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: #fff;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+            opacity: 1 !important;
+        }
+
+        .typing-cursor::after {
+            content: '|';
+            display: inline-block;
+            margin-left: 4px;
+            animation: blinkCursor 0.8s step-end infinite;
+            color: #ff9f4a;
+            font-weight: 400;
+        }
+
+        .badge-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .badge-container {
+            position: relative;
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        .badge-container .tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .badge-container:hover .tooltip {
+            visibility: visible;
+            opacity: 1 !important;
+        }
+
+        .badge-box {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 2px;
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .badge-box-inner {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 12px;
+            display: flex;
+            gap: 8px;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .badge {
+            width: 22px;
+            height: 22px;
+            transition: transform 0.3s;
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        .badge:hover {
+            transform: scale(1.2);
+        }
+
+        #profile-bio {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            opacity: 1 !important;
+        }
+
+        .bio-separator {
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 20px 0;
+            opacity: 1 !important;
+        }
+
+        .profile-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 0;
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        .social-icon {
+            width: 36px;
+            height: 36px;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+            pointer-events: auto;
+            opacity: 1 !important;
+        }
+
+        .social-icon:hover {
+            transform: scale(1.4) rotateY(15deg);
+        }
+
+        .glitch {
+            animation: glitch 0.2s ease-in-out;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        @keyframes orbit {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fast-orbit {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .cursor-trail {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .cursor-trail-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s ease;
+        }
+        
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            cursor: pointer;
+        }
+
+        #start-text {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            color: #fff;
+            text-align: center;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 4px solid #0a0a1a;
+            box-sizing: border-box;
+            z-index: 10;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .status-badge.online {
+            background: #23a55a;
+            box-shadow: 0 0 8px #23a55a;
+        }
+
+        .status-badge.idle {
+            background: #f0b232;
+            box-shadow: 0 0 10px #f0b232;
+        }
+
+        .status-badge.dnd {
+            background: #f23f43;
+            box-shadow: 0 0 8px #f23f43;
+        }
+
+        .status-badge.dnd::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55%;
+            height: 2.5px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        .status-badge.offline {
+            background: transparent;
+            border-color: #80848e;
+            box-shadow: none;
+        }
+
+        .discord-presence {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 6px 12px;
+            margin-top: 6px;
+            backdrop-filter: blur(4px);
+            width: fit-content;
+            transition: opacity 0.4s ease, background 0.2s ease, border-color 0.2s ease;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .discord-presence:hover {
+            background: rgba(255, 255, 255, 0.13);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .presence-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px currentColor;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .presence-status-dot.online  { background: #23a55a; color: #23a55a; }
+        .presence-status-dot.idle    { background: #f0b232; color: #f0b232; }
+        .presence-status-dot.dnd     { background: #f23f43; color: #f23f43; }
+        .presence-status-dot.offline { background: #80848e; color: #80848e; }
+
+        .presence-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .presence-status-text {
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .presence-activity {
+            font-size: 12px;
+            color: rgba(255,255,255,0.9);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .activity-line1 {
+            font-size: 12px;
+            color: rgba(255,255,255,0.95);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .activity-line2 {
+            font-size: 11px;
+            color: rgba(255,255,255,0.55);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #spotify-info {
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.15), rgba(29, 185, 84, 0.05));
+            border: 1px solid rgba(29, 185, 84, 0.3);
+            border-radius: 14px;
+            padding: 15px;
+            margin-top: 6px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #spotify-info:hover {
+            border-color: rgba(29, 185, 84, 0.5);
+            background: linear-gradient(135deg, rgba(29, 185, 84, 0.2), rgba(29, 185, 84, 0.1));
+        }
+
+        #spotify-cover {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            background: rgba(255,255,255,0.1);
+        }
+
+        #spotify-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1db954;
+        }
+
+        #spotify-artist {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .progress-bar {
+            height: 5px;
+            background: rgba(255,255,255,0.1);
+            margin-top: 10px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        #progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #1db954, #1ed760);
+            transition: width 0.2s linear;
+        }
+
+        .error-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(240, 71, 71, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 200;
+            display: none;
+        }
+
+        .rain-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0.5;
+            mix-blend-mode: screen;
+        }
+        
+        @media (max-width: 430px) {
+            #profile-block {
+                width: 90vw;
+                max-width: 350px;
+                min-height: 280px;
+                padding: 15px;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .profile-container {
+                width: 120px;
+                height: 120px;
+            }
+
+            .profile-picture {
+                width: 120px;
+                height: 120px;
+            }
+
+            .profile-info {
+                align-items: center;
+                text-align: center;
+            }
+
+            .name-and-badges {
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+            }
+
+            #profile-name {
+                font-size: 24px;
+                letter-spacing: 2px;
+            }
+
+            .badge {
+                width: 18px;
+                height: 18px;
+            }
+
+            #profile-bio {
+                font-size: 14px;
+                line-height: 1.4;
+            }
+
+            .social-icon {
+                width: 32px;
+                height: 32px;
+            }
+
+            .top-controls {
+                bottom: 15px;
+                gap: 10px;
+                padding: 6px 10px;
+            }
+
+            .slider {
+                width: 60px;
+                height: 4px;
+            }
+
+            #start-text {
+                font-size: 18px;
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <canvas id="rainCanvas" class="rain-canvas"></canvas>
+
+    <div class="custom-cursor" id="custom-cursor"></div>
+    <div class="cursor-trail" id="cursor-trail"></div>
+    
+    <div id="start-screen">
+        <div id="start-text">Click anywhere to enter<br><span style="font-size:14px;opacity:0.7;">RealTyler</span></div>
+    </div>
+
+    <div class="container">
+        
+        <video id="background" autoplay loop muted playsinline webkit-playsinline>
+            <source src="assets/background.mp4" type="video/mp4">
+        </video>
+
+        <div class="glitch-overlay"></div>
+
+        <div id="profile-block">
+            <div class="profile-header">
+                <div class="profile-container" id="profile-container">
+                    <img id="profile-picture" src="https://cdn.discordapp.com/avatars/1175835979890819123/45e7da7f28b7cf5e888be20887366f84.webp?size=1024" alt="RealTyler" class="profile-picture">
+                    <div id="status-badge" class="status-badge hidden"></div>
+                </div>
+                <div class="profile-info">
+                    <div class="name-and-badges">
+                        <div id="profile-name">RealTyler</div>
+                        <div class="badge-box">
+                            <div class="badge-box-inner">
+                                <div class="badge-group">
+                                    <div class="badge-container">
+                                        <img src="assets/owner.gif" alt="Owner" class="badge">
+                                        <span class="tooltip">Owner</span>
+                                    </div>
+                                    <div class="badge-container">
+                                        <img src="assets/developer.png" alt="Developer" class="badge">
+                                        <span class="tooltip">Developer</span>
+                                    </div>
+                                    <div class="badge-container">
+                                        <img src="assets/staff.gif" alt="Staff" class="badge">
+                                        <span class="tooltip">Staff</span>
+                                    </div>
+                                    <div class="badge-container">
+                                        <img src="assets/roblox.png" alt="Robloxian" class="badge">
+                                        <span class="tooltip">Robloxian</span>
+                                    </div>
+                                    <div class="badge-container">
+                                        <img src="assets/partner.gif" alt="Premium" class="badge">
+                                        <span class="tooltip">Premium</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="profile-bio">Loading from Discord...</div>
+                    
+                    <a id="discord-presence" class="discord-presence hidden" href="https://discord.com/users/1175835979890819123" target="_blank" rel="noopener">
+                        <div class="presence-status-dot" id="presence-dot"></div>
+                        <div class="presence-info">
+                            <div id="presence-status-text" class="presence-status-text">LOADING...</div>
+                            <div id="presence-activity" class="presence-activity">Fetching activity...</div>
+                        </div>
+                    </a>
+
+                    <div id="spotify-info">
+                        <img id="spotify-cover" src="" alt="Album Art" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23333%22 width=%2260%22 height=%2260%22/%3E%3Ctext fill=%22%23fff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2210%22%3ENo Art%3C/text%3E%3C/svg%3E'">
+                        <div class="presence-info">
+                            <div id="spotify-title" class="activity-line1"></div>
+                            <div id="spotify-artist" class="activity-line2"></div>
+                            <div class="progress-bar"><div id="progress"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bio-separator"></div>
+            <div class="profile-footer">
+                <div class="social-links">
+                    <a href="https://discord.gg/X6vu3mEFgD" target="_blank">
+                        <img src="assets/discord.png" alt="Discord" class="social-icon">
+                    </a>
+                </div>
+                <div class="social-links">
+                    <a href="https://www.roblox.com/users/1913653246/profile" target="_blank">
+                        <img src="assets/roblox.png" alt="Roblox" class="social-icon">
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-controls" id="top-controls">
+            <div class="volume-control">
+                <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                </svg>
+                <input id="volume-slider" class="slider" type="range" min="0" max="1" step="0.01" value="0.06">
+                <span class="slider-value" id="volume-value">6%</span>
+            </div>
+            <div class="transparency-control">
+                <svg class="transparency-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <input id="transparency-slider" class="slider" type="range" min="0.05" max="1" step="0.01" value="0.28">
+                <span class="slider-value" id="transparency-value">28%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="error-message" id="error-message"></div>
+
+    <audio id="background-music" loop preload="auto">
+        <source src="assets/background_music.mp3" type="audio/mp3">
+    </audio>
+
+    <script>
+        (function() {
+            // === CONFIGURATION ===
+            const DISCORD_ID = "1504986979010613459";
+            let progressInterval, lanyardInterval, typewriterTimer;
+
+            // DOM elements
+            const bgMusic = document.getElementById('background-music');
+            const volumeSlider = document.getElementById('volume-slider');
+            const transparencySlider = document.getElementById('transparency-slider');
+            const startScreen = document.getElementById('start-screen');
+            const profileBlock = document.getElementById('profile-block');
+            const customCursor = document.getElementById('custom-cursor');
+            const cursorTrail = document.getElementById('cursor-trail');
+            const nameElement = document.getElementById('profile-name');
+            const glitchOverlay = document.querySelector('.glitch-overlay');
+            const errorMessage = document.getElementById('error-message');
+            const topControls = document.getElementById('top-controls');
+
+            // === STANDARD-WERTE ===
+            bgMusic.volume = 0.06;
+            profileBlock.style.background = 'rgba(0, 0, 0, 0.28)';
+
+            // === RAIN EFFECT ===
+            const rainCanvas = document.getElementById('rainCanvas');
+            let ctx = rainCanvas.getContext('2d');
+            let rainDrops = [];
+            let rainAnimationId;
+
+            function resizeRain() { 
+                rainCanvas.width = window.innerWidth; 
+                rainCanvas.height = window.innerHeight; 
+                initRain(); 
+            }
+            function initRain() {
+                const count = Math.floor(rainCanvas.width * rainCanvas.height / 7000);
+                rainDrops = [];
+                for(let i=0; i<count; i++) {
+                    rainDrops.push({
+                        x: Math.random() * rainCanvas.width,
+                        y: Math.random() * rainCanvas.height,
+                        length: 7 + Math.random() * 18,
+                        speed: 5 + Math.random() * 12,
+                    });
+                }
+            }
+            function drawRain() {
+                if(!ctx) return;
+                ctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+                ctx.beginPath();
+                for(let drop of rainDrops) {
+                    ctx.moveTo(drop.x, drop.y);
+                    ctx.lineTo(drop.x, drop.y + drop.length);
+                }
+                ctx.strokeStyle = 'rgba(160, 200, 255, 0.5)';
+                ctx.lineWidth = 1.6;
+                ctx.stroke();
+                for(let drop of rainDrops) {
+                    drop.y += drop.speed;
+                    if(drop.y > rainCanvas.height) { 
+                        drop.y = -drop.length; 
+                        drop.x = Math.random() * rainCanvas.width; 
+                    }
+                }
+                rainAnimationId = requestAnimationFrame(drawRain);
+            }
+            window.addEventListener('resize', () => resizeRain());
+            resizeRain();
+            drawRain();
+    // === CURSOR & TRAIL ===
+    if (!('ontouchstart' in window)) {
+
+        const trailCanvas = document.createElement('canvas');
+        document.body.appendChild(trailCanvas);
+
+        const tctx = trailCanvas.getContext('2d');
+
+        trailCanvas.style.position = 'fixed';
+        trailCanvas.style.top = '0';
+        trailCanvas.style.left = '0';
+        trailCanvas.style.width = '100%';
+        trailCanvas.style.height = '100%';
+        trailCanvas.style.pointerEvents = 'none';
+        trailCanvas.style.zIndex = '9998';
+
+        trailCanvas.width = window.innerWidth;
+        trailCanvas.height = window.innerHeight;
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        let currentX = 0;
+        let currentY = 0;
+
+        const points = [];
+
+        document.addEventListener('mousemove', (e) => {
+
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+
+            points.push({
+                x: mouseX,
+                y: mouseY,
+                life: 1
+            });
+        });
+
+        document.addEventListener('mousedown', () =>
+            customCursor.classList.add('clicking')
+        );
+
+        document.addEventListener('mouseup', () =>
+            customCursor.classList.remove('clicking')
+        );
+
+        document.body.style.cursor = 'none';
+
+        function animateCursor() {
+
+            currentX += (mouseX - currentX) * 0.25;
+            currentY += (mouseY - currentY) * 0.25;
+
+            customCursor.style.left = currentX + 'px';
+            customCursor.style.top = currentY + 'px';
+
+            requestAnimationFrame(animateCursor);
+        }
+
+        function animateTrail() {
+
+            tctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+
+            for (let i = 0; i < points.length; i++) {
+
+                points[i].life -= 0.1;
+
+                if (points[i].life <= 0) {
+                    points.splice(i, 1);
+                    i--;
+                }
+            }
+
+            tctx.beginPath();
+
+            for (let i = 0; i < points.length; i++) {
+
+                const p = points[i];
+
+                if (i === 0) {
+                        tctx.moveTo(p.x, p.y);
+                    } else {
+                        tctx.lineTo(p.x, p.y);
+                    }
+                }
+
+                tctx.strokeStyle = 'rgba(255,255,255,0.85)';
+                tctx.lineWidth = 6;
+                tctx.lineCap = 'round';
+                tctx.lineJoin = 'round';
+
+                tctx.stroke();
+
+                requestAnimationFrame(animateTrail);
+            }
+
+            animateCursor();
+            animateTrail();
+
+            window.addEventListener('resize', () => {
+                trailCanvas.width = window.innerWidth;
+                trailCanvas.height = window.innerHeight;
+            });
+
+            } else {
+
+                customCursor.style.display = 'none';
+                document.body.style.cursor = 'auto';
+            }
+
+            // === VOLUME & TRANSPARENCY ===
+            volumeSlider.addEventListener('input', (e) => { 
+                let v = parseFloat(e.target.value); 
+                bgMusic.volume = v; 
+                document.getElementById('volume-value').textContent = Math.round(v*100)+'%';
+            });
+            transparencySlider.addEventListener('input', (e) => { 
+                let op = parseFloat(e.target.value); 
+                profileBlock.style.background = `rgba(0, 0, 0, ${op})`; 
+                document.getElementById('transparency-value').textContent = Math.round(op*100)+'%';
+            });
+
+            // === ERROR MESSAGE ===
+            function showError(msg) { 
+                if(errorMessage) {
+                    errorMessage.textContent = msg; 
+                    errorMessage.style.display='block'; 
+                    setTimeout(()=>errorMessage.style.display='none',5000); 
+                }
+            }
+
+            // === START SCREEN CLICK ===
+            startScreen.addEventListener('click', async () => {
+                startScreen.style.opacity = '0'; 
+                startScreen.style.pointerEvents = 'none';
+                setTimeout(() => startScreen.style.display = 'none', 800);
+                profileBlock.style.opacity = '1';
+                topControls.style.opacity = '1';
+                try { 
+                    await bgMusic.play(); 
+                } catch(e) { 
+                    document.addEventListener('click', () => bgMusic.play().catch(() => {}), {once: true}); 
+                }
+                startTypewriterEffect();
+            });
+
+            // === TILT EFFECT ===
+            let tiltX=0, tiltY=0, currentTiltX=0, currentTiltY=0, isHovering=false;
+            profileBlock.addEventListener('mousemove', (e) => {
+                if(profileBlock.style.opacity !== '1') return;
+                isHovering = true;
+                const rect = profileBlock.getBoundingClientRect();
+                const centerX = rect.left + rect.width/2;
+                const centerY = rect.top + rect.height/2;
+                tiltX = (e.clientY - centerY)/25;
+                tiltY = (centerX - e.clientX)/25;
+            });
+            profileBlock.addEventListener('mouseleave', () => { 
+                isHovering=false; 
+                tiltX=0; 
+                tiltY=0; 
+            });
+            function animateTilt() {
+                if(isHovering || Math.abs(currentTiltX-tiltX)>0.01 || Math.abs(currentTiltY-tiltY)>0.01) {
+                    currentTiltX += (tiltX - currentTiltX)*0.12;
+                    currentTiltY += (tiltY - currentTiltY)*0.12;
+                    profileBlock.style.transform = `translate(-50%, -50%) perspective(1000px) rotateX(${currentTiltX}deg) rotateY(${currentTiltY}deg)`;
+                }
+                requestAnimationFrame(animateTilt);
+            }
+            animateTilt();
+
+            // === LANYARD FETCH ===
+            async function fetchLanyard() {
+                try {
+                    const res = await fetch(`https://api.lanyard.rest/v1/users/${DISCORD_ID}`);
+                    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const json = await res.json();
+                    if(!json.success || !json.data) throw new Error('Invalid data');
+                    const { data } = json;
+                    
+                    // Avatar
+                    const avatarUrl = `https://cdn.discordapp.com/avatars/${DISCORD_ID}/${data.discord_user.avatar}.png?size=512`;
+                    document.getElementById('profile-picture').src = avatarUrl;
+                    
+                    // Name
+                    const displayName = data.discord_user.global_name || data.discord_user.username || 'RealTyler';
+                    if(!nameElement.getAttribute('data-original')) {
+                        nameElement.setAttribute('data-original', displayName);
+                        if(!window._typewriterActive) nameElement.innerText = displayName;
+                    }
+                    
+                    // Bio
+                    document.getElementById('profile-bio').textContent = data.discord_user.bio || "Co-Owner/Founder of Vo1d.lol.";
+
+                    // Status
+                    const status = data.discord_status || 'offline';
+                    document.getElementById('presence-dot').className = `presence-status-dot ${status}`;
+                    document.getElementById('status-badge').className = `status-badge ${status}`;
+                    document.getElementById('status-badge').classList.remove('hidden');
+                    
+                    const statusSpan = document.getElementById('presence-status-text');
+                    statusSpan.textContent = status.toUpperCase();
+                    statusSpan.className = `presence-status-text ${status}`;
+
+                    // Activities
+                    const activities = data.activities || [];
+                    const game = activities.find(a => a.type !== 2 && a.type !== 4 && a.name !== 'Custom Status');
+                    const custom = activities.find(a => a.type === 4);
+                    const actDiv = document.getElementById('presence-activity');
+                    
+                    if(game) {
+                        actDiv.innerHTML = `<span class="activity-line1">${game.name}</span>${game.details ? `<span class="activity-line2">${game.details}</span>` : ''}${game.state ? `<span class="activity-line2">${game.state}</span>` : ''}`;
+                    } else if(custom && custom.state) {
+                        actDiv.innerHTML = `<span class="activity-line1">${custom.emoji_name||''} ${custom.state}</span>`;
+                    } else {
+                        actDiv.textContent = 'No current activity';
+                    }
+
+                    document.getElementById('discord-presence').classList.remove('hidden');
+
+            // Spotify
+            const spotify = data.spotify;
+            const spotifyDiv = document.getElementById('spotify-info');
+            const spotifyCover = document.getElementById('spotify-cover');
+            const spotifyTitle = document.getElementById('spotify-title');
+            const spotifyArtist = document.getElementById('spotify-artist');
+            const progressBar = document.getElementById('progress');
+
+            if (spotify && spotifyDiv) {
+                    spotifyDiv.style.display = 'flex';
+
+                    spotifyCover.src = spotify.album_art_url || '';
+
+                    spotifyTitle.textContent = spotify.song || 'Unknown Song';
+                    spotifyArtist.textContent = spotify.artist || 'Unknown Artist';
+
+                    clearInterval(progressInterval);
+
+                    const start = spotify.timestamps.start;
+                    const end = spotify.timestamps.end;
+
+                    const update = () => {
+                        let percent = Math.min(((Date.now() - start) / (end - start)) * 100, 100);
+                        progressBar.style.width = `${percent}%`;
+
+                        if (percent >= 100) clearInterval(progressInterval);
+                    };
+
+                    update();
+                    progressInterval = setInterval(update, 1000);
+
+                } else if (spotifyDiv) {
+                    spotifyDiv.style.display = 'none';
+                    clearInterval(progressInterval);
+                }
+                    
+                } catch(err) { 
+                    console.error('Lanyard fetch error:', err); 
+                }
+            }
+
+            // === GLITCH EFFECT ===
+            function triggerGlitch() {
+                glitchOverlay.style.opacity = '1';
+                profileBlock.classList.add('glitch');
+                setTimeout(() => {
+                    glitchOverlay.style.opacity = '0';
+                    profileBlock.classList.remove('glitch');
+                }, 200);
+            }
+
+            // === ORBIT ANIMATION ON CLICK ===
+            document.getElementById('profile-container').addEventListener('click', () => {
+                const container = document.getElementById('profile-container');
+                container.classList.add('fast-orbit');
+                triggerGlitch();
+                setTimeout(() => container.classList.remove('fast-orbit'), 500);
+            });
+
+            // === TYPEWRITER EFFECT ===
+            let isTyping = false;
+            window._typewriterActive = false;
+
+            function typewriterEffect(text, element, callback) {
+                if(isTyping) return;
+                isTyping = true;
+                window._typewriterActive = true;
+                element.classList.add('typing-cursor');
+                let index = 0;
+                element.innerText = '';
+                
+                function addLetter() {
+                    if(index < text.length) {
+                        element.innerText += text[index];
+                        index++;
+                        setTimeout(addLetter, 45 + Math.random() * 55);
+                    } else {
+                        setTimeout(() => {
+                            element.classList.remove('typing-cursor');
+                            isTyping = false;
+                            window._typewriterActive = false;
+                            if(callback) callback();
+                        }, 500);
+                    }
+                }
+                addLetter();
+            }
+            
+            function deleteText(element, callback) {
+                if(isTyping) return;
+                isTyping = true;
+                window._typewriterActive = true;
+                element.classList.add('typing-cursor');
+                let currentText = element.innerText;
+                let length = currentText.length;
+                
+                function deleteLetter() {
+                    if(length > 0) {
+                        element.innerText = currentText.substring(0, length - 1);
+                        length--;
+                        setTimeout(deleteLetter, 40);
+                    } else {
+                        element.classList.remove('typing-cursor');
+                        isTyping = false;
+                        window._typewriterActive = false;
+                        if(callback) callback();
+                    }
+                }
+                deleteLetter();
+            }
+            
+            const variants = [
+                "RealTyler", "RealtYlEr", "ᴿᵉᵃˡᵀʸˡᵉʳ", 
+                "𝐑𝐞𝐚𝐥𝐓𝐲𝐥𝐞𝐫", "RealTyler", 
+                "REALTYLER", "ReAlTyLeR", "rEaLTyLeR"
+            ];
+            
+            function runTypewriterCycle() {
+                if(profileBlock.style.opacity !== '1') {
+                    scheduleNextCycle();
+                    return;
+                }
+                if(isTyping) {
+                    setTimeout(() => runTypewriterCycle(), 500);
+                    return;
+                }
+                
+                let newText = variants[Math.floor(Math.random() * variants.length)];
+                if(newText === nameElement.innerText && !isTyping) {
+                    newText = variants[(Math.floor(Math.random() * variants.length) + 1) % variants.length];
+                }
+                
+                deleteText(nameElement, () => {
+                    typewriterEffect(newText, nameElement, () => {
+                        scheduleNextCycle();
+                    });
+                });
+            }
+            
+            function scheduleNextCycle() {
+                if(typewriterTimer) clearTimeout(typewriterTimer);
+                typewriterTimer = setTimeout(() => {
+                    runTypewriterCycle();
+                }, 10000);
+            }
+            
+            function startTypewriterEffect() {
+                if(window._typewriterActive) return;
+                const checkInterval = setInterval(() => {
+                    if(nameElement.getAttribute('data-original') && profileBlock.style.opacity === '1') {
+                        clearInterval(checkInterval);
+                        setTimeout(() => runTypewriterCycle(), 2000);
+                    }
+                }, 300);
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if(!window._typewriterActive) {
+                        if(!nameElement.getAttribute('data-original')) {
+                            nameElement.setAttribute('data-original', "RealTyler");
+                        }
+                        runTypewriterCycle();
+                    }
+                }, 5000);
+            }
+
+            // === INIT ===
+            fetchLanyard();
+            lanyardInterval = setInterval(fetchLanyard, 15000);
+            
+            window.addEventListener('beforeunload', () => { 
+                clearInterval(progressInterval); 
+                clearInterval(lanyardInterval); 
+                if(typewriterTimer) clearTimeout(typewriterTimer);
+                if(rainAnimationId) cancelAnimationFrame(rainAnimationId);
+            });
+            
+            document.addEventListener('visibilitychange', () => { 
+                if(document.hidden) {
+                    clearInterval(lanyardInterval); 
+                } else { 
+                    fetchLanyard(); 
+                    lanyardInterval = setInterval(fetchLanyard, 15000); 
+                } 
+            });
+        })();
+    </script>
+</body>
+</html>
